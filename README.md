@@ -143,4 +143,6 @@ export const messages = pgTable("messages", {
 
 ## About `api.ts`
 
-You can use a different backend, for example an `express` server and `axios` calls. Just follow the same storage and retrieval logic as in `schema.ts` and `api.ts`.
+You can use a different backend for `messageStore()` in `api.ts` instead of direct database queries. For example `axios` calls to an external server such as `express`.
+
+Just follow the same storage and retrieval logic as in `schema.ts` and `api.ts`.
