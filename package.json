@@ -1,0 +1,41 @@
+{
+  "name": "@voscarmv/aichatbot",
+  "version": "1.0.0",
+  "description": "AI chatbot framework for messaging apps ",
+  "keywords": [
+    "chatbot",
+    "ai",
+    "bot",
+    "whatsapp",
+    "telegram",
+    "signal",
+    "bot",
+    "artificial",
+    "intelligence",
+    "chatgpt",
+    "deepseek",
+    "openai"
+  ],
+  "homepage": "https://github.com/voscarmv/aichatbot#readme",
+  "bugs": {
+    "url": "https://github.com/voscarmv/aichatbot/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voscarmv/aichatbot.git"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "Oscar Mier",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "gitignore": "^0.7.0",
+    "openai": "^6.14.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
