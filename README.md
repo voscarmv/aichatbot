@@ -1,5 +1,5 @@
 # aichatbot
-AI chatbot framework for messaging apps. Supports async overlapping messages through queueing as well as AI tool calls.
+AI chatbot framework for messaging apps. Supports concurrent messages through queueing, as well as AI tool calls.
 
 ## Telegram bot example
 
