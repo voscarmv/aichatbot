@@ -89,7 +89,7 @@ export class OpenAiClient implements AiClient {
     }
     async runAI(
         messages: ChatCompletionMessageParam[],
-        additionaToolslArgs: object = {},
+        additionalToolslArgs: object = {},
         additionalInstructionsArgs: object = {}):
         Promise<
             ChatCompletionMessageParam[]
@@ -126,7 +126,7 @@ export class OpenAiClient implements AiClient {
                     if (toolCall.type !== 'function') {
                         continue;
                     }
-                    const result = await this.#callTool(toolCall, additionaToolslArgs)
+                    const result = await this.#callTool(toolCall, additionalToolslArgs)
                     output.push({
                         role: 'tool',
                         tool_call_id: result.tool_call_id,
