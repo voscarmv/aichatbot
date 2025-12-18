@@ -3,7 +3,7 @@ AI chatbot framework for messaging apps. Supports concurrent messages through qu
 
 ## Telegram bot example
 
-Demo [here.](https://github.com/voscarmv/aibot2)
+Demo [here.](https://github.com/voscarmv/aibot)
 
 Using
 
