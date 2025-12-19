@@ -8,8 +8,8 @@ Demo [here.](https://github.com/voscarmv/aibot)
 Using
 
 ```bash
-npm install @voscarmv/aichatbot grammy drizzle-orm pg
-npm install -D typescript drizzle-kit @types/pg tsx
+npm install @voscarmv/aichatbot @voscarmv/aimessagestore grammy
+npm install -D typescript
 ```
 
 ### `index.ts`
@@ -64,58 +64,28 @@ export const aiClient = new OpenAiClient({
 
 ```typescript
 import 'dotenv/config';
-import { messages } from './schema.js';
-import { sql, eq, and, asc } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { FunctionMessageStore } from '@voscarmv/aichatbot';
+import axios from 'axios';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not defined");
+if (!process.env.MESSAGESTORE_URL) {
+    throw new Error("MESSAGESTORE_URL is not defined");
 }
-const db = drizzle(process.env.DATABASE_URL);
+const url = process.env.MESSAGESTORE_URL;
 
 async function readUserMessages(user_id: string): Promise<string[]> {
-    const response: { message: string }[] = await db
-        .select({ message: messages.message })
-        .from(messages)
-        .where(eq(messages.user_id, user_id))
-        .orderBy(asc(messages.updated_at), asc(messages.id));
-    return response.map(item => item.message);
+    return (await axios.get<string[]>(`${url}/messages/${user_id}`)).data;
 }
 
 async function unqueueUserMessages(user_id: string): Promise<string[]> {
-    const response: { message: string }[] = await db
-        .update(messages)
-        .set({ queued: false, updated_at: sql`now()` })
-        .where(eq(messages.user_id, user_id))
-        .returning({ message: messages.message });
-    return response.map(item => item.message);
+    return (await axios.put<string[]>(`${url}/messages/${user_id}/unqueue`)).data;
 }
 
 async function insertMessages(user_id: string, queued: boolean, msgs: string[]): Promise<string[]> {
-    const response: { message: string }[] = await db
-        .insert(messages)
-        .values(msgs.map((msg) => (
-            {
-                user_id,
-                queued,
-                message: msg
-            }
-        )))
-        .returning({ message: messages.message });
-    return response.map(item => item.message);
+    return (await axios.post<string[]>( `${url}/messages`, {user_id, queued, msgs})).data;
 }
 
 async function queuedMessages(user_id: string): Promise<string[]> {
-    const response: { message: string }[] = await db
-        .select({ message: messages.message })
-        .from(messages)
-        .where(
-            and(
-                eq(messages.queued, true),
-                eq(messages.user_id, user_id)
-            ));
-    return response.map(item => item.message);
+    return (await axios.get<string[]>(`${url}/messages/${user_id}/queued`)).data;
 }
 
 export const messageStore = new FunctionMessageStore({
@@ -126,23 +96,32 @@ export const messageStore = new FunctionMessageStore({
 });
 ```
 
-### `schema.ts`
+### `server.ts`
 
 ```typescript
-import { boolean, bigint, timestamp, text, pgTable, varchar } from "drizzle-orm/pg-core";
+import { AiMessageStoreBackend } from "@voscarmv/aimessagestore";
+import 'dotenv/config';
 
-export const messages = pgTable("messages", {
-  id: bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
-  user_id: varchar({ length: 255 }).notNull(),
-  message: text().notNull(),
-  queued: boolean().notNull(),
-  created_at: timestamp('created_at').notNull().defaultNow(),
-  updated_at: timestamp('updated_at').notNull().defaultNow()
+if (!process.env.DATABASE_URL) {
+    throw Error('DATABASE_URL undefined');
+}
+
+const server = new AiMessageStoreBackend({
+    dbUrl: process.env.DATABASE_URL,
+    port: 3000
 });
+
+(async () => {
+    console.log("Migrate DB");
+    await server.migrate()
+    console.log("Done Migrating DB. Start server...");
+    server.listen();
+})();
+
 ```
 
 ## About `api.ts`
 
-You can use a different backend for `messageStore()` in `api.ts` instead of direct database queries. For example `axios` calls to an external server such as `express`.
+You can use a different backend for `messageStore()` in `api.ts` instead of direct database queries.
 
-Just follow the same storage and retrieval logic as in `schema.ts` and `api.ts`.
+Just follow the same storage and retrieval logic from [@voscarmv/aimessagestore](https://github.com/voscarmv/aimessagestore).
