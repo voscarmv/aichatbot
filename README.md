@@ -122,6 +122,6 @@ const server = new AiMessageStoreBackend({
 
 ## About `api.ts`
 
-You can use a different backend for `messageStore()` in `api.ts` instead of direct database queries.
+You can use a different backend for `messageStore()` in `api.ts`.
 
 Just follow the same storage and retrieval logic from [@voscarmv/aimessagestore](https://github.com/voscarmv/aimessagestore).
