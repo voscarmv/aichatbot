@@ -33,7 +33,7 @@ export class ChatService {
         messages.map(
             (msg: ChatCompletionMessageParam) => {
                 if (typeof (msg.content) === "string")
-                    if (msg.role === "assistant")
+                    if (msg.role === "assistant" && msg.content.length > 0)
                         replyFn(msg.content);
             }
         );
