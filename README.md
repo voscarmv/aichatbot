@@ -8,7 +8,7 @@ Demo [here.](https://github.com/voscarmv/aibot)
 Using
 
 ```bash
-npm install @voscarmv/aichatbot @voscarmv/aimessagestore grammy
+npm install @voscarmv/aichatbot @voscarmv/aimessagestore grammy axios dotenv
 npm install -D typescript @types/node
 ```
 
