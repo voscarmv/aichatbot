@@ -121,7 +121,7 @@ const server = new AiMessageStoreBackend({
 
 ```
 
-## `tools.ts`
+### `tools.ts`
 
 ```typescript
 export const tools = [
