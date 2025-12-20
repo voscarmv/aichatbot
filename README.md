@@ -9,7 +9,7 @@ Using
 
 ```bash
 npm install @voscarmv/aichatbot @voscarmv/aimessagestore grammy
-npm install -D typescript
+npm install -D typescript @types/node
 ```
 
 ### `index.ts`
