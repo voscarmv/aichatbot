@@ -50,6 +50,8 @@ bot.start();
 ```typescript
 import { OpenAiClient } from "@voscarmv/aichatbot";
 import "dotenv/config";
+import { functions, tools } from "./tools.js";
+import { currentDate } from "./utils/instructions.js";
 if (!process.env.DEEPSEEK_KEY) {
     throw new Error("DEEPSEEK_KEY is not defined");
 }
@@ -58,6 +60,9 @@ export const aiClient = new OpenAiClient({
     apiKey: process.env.DEEPSEEK_KEY,
     model: 'deepseek-chat',
     instructions: 'You are a helpful assistant.',
+    tools,
+    functions,
+    additionalInstructions: currentDate
 });
 ```
 
@@ -160,6 +165,13 @@ export const tools = [
             }
         }
     },
+    {
+        type: 'function' as const,
+        function: {
+            name: 'getOS',
+            description: 'Return the host Operating System',
+        }
+    },
 ];
 
 export const functions = {
@@ -180,7 +192,33 @@ export const functions = {
         }
         return JSON.stringify(result);
     },
+    getOS: async (params: any, additionalArgs: any): Promise<string> => {
+        const { platform, type, release, version } = additionalArgs;
+        return `Platform: ${platform}, Type: ${type}, Release: ${release}, Version: ${version}`;
+    },
 };
+```
+
+### `utils/os.ts`
+
+```typescript
+import * as os from 'os';
+
+const platform = os.platform();
+const type = os.type();
+const release = os.release();
+const version = os.version();
+
+export const operatingSystem: object = { platform, type, release, version };
+```
+
+### `utils/instructions.ts`
+
+```typescript
+export async function currentDate(args: object): Promise<string>{
+    const { date } = args as { date: Date };
+    return `Today is ${date.toString()}`;
+}
 ```
 
 ## About `api.ts`
