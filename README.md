@@ -133,15 +133,15 @@ export const tools = [
     {
         type: 'function' as const,
         function: {
-            name: 'getDate',
-            description: 'Get the current date and time',
+            name: 'getLang',
+            description: 'Get the language for a given language code',
             parameters: {
                 type: 'object',
                 properties: {
                     language: {
                         type: 'string',
                         enum: ['en-US', 'es-MX'],
-                        description: 'The language of the date and time',
+                        description: 'The language code',
                     }
                 },
                 required: ['language']
@@ -175,10 +175,13 @@ export const tools = [
 ];
 
 export const functions = {
-    getDate: async (params: any, additionalArgs: any): Promise<string> => {
+    getLang: async (params: any, additionalArgs: any): Promise<string> => {
         const { language } = params;
-        const myDate = new Date();
-        return myDate.toLocaleString(language);
+        const langs: Record<string,string> = {
+            'es-MX': 'Mexican Spanish',
+            'en-US': 'US English'
+        };
+        return langs[language] || '';
     },
     throwDice: async (params: any, additionalArgs: any): Promise<string> => {
         const { nDice } = params;
