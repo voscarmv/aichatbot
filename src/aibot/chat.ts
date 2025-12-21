@@ -4,13 +4,16 @@ import type {
     ChatCompletionMessageParam,
 } from "openai/resources";
 
+export type processMessagesParams = {
+    user_id: string,
+    content: string,
+    replyFn?: any,
+    additionalToolsArgs?: object,
+    additionalInstructionsArgs?: object
+}
+
 export interface Chat {
-    processMessages(
-        user_id: string,
-        content: string,
-        replyFn?: any,
-        additionalToolsArgs?: object,
-        additionalInstructionsArgs?: object):
+    processMessages(params: processMessagesParams):
         Promise<
             string[]
         >
@@ -38,15 +41,13 @@ export class ChatService {
             }
         );
     }
-    async processMessages(
-        user_id: string,
-        content: string,
-        replyFn: any = () => null,
-        additionalToolsArgs?: object,
-        additionalInstructionsArgs?: object):
-        Promise<
-            string[]
-        > {
+    async processMessages(params: processMessagesParams): Promise<string[]> {
+        const {
+            user_id,
+            content,
+            replyFn,
+            additionalToolsArgs,
+            additionalInstructionsArgs } = params;
         await this.#messageStore.insertMessages(user_id, true, [{ role: 'user', content }]);
         if (this.#busy.has(user_id)) {
             return [];

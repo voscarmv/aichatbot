@@ -39,7 +39,11 @@ bot.on("message:text", async (ctx) => {
         console.log(new Date(), "to:", from, content);
         ctx.reply(content);
     }
-    chat.processMessages(from, content, reply, operatingSystem, { date: new Date()});
+    chat.processMessages({
+        from, content, reply,
+        additionalToolslArgs: operatingSystem,
+        additionalInstructionsArgs: { date: new Date()}
+    });
 });
 
 bot.start();
