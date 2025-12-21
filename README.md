@@ -14,11 +14,11 @@ npm install -D typescript @types/node
 
 ### `index.ts`
 ```typescript
-
 import { aiClient } from "./bot.js";
 import { messageStore } from "./api.js";
 import { ChatService } from "@voscarmv/aichatbot";
 import { Bot } from "grammy";
+import { operatingSystem } from "./utils/os.js";
 import "dotenv/config";
 
 const chat = new ChatService({
@@ -39,7 +39,7 @@ bot.on("message:text", async (ctx) => {
         console.log(new Date(), "to:", from, content);
         ctx.reply(content);
     }
-    chat.processMessages(from, content, reply);
+    chat.processMessages(from, content, reply, operatingSystem, { date: new Date()});
 });
 
 bot.start();
