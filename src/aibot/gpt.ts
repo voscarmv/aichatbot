@@ -18,7 +18,7 @@ export type AiClientOptions = {
     apiKey: string;
     model: string;
     instructions: string;
-    additionalInstructions?: (args: object) => string;
+    additionalInstructions?: (args: object) => Promise<string>;
     tools?: ChatCompletionTool[];
     functions?: Record<string, (arg1: object, arg2: object) => Promise<string>>;
 };
@@ -26,7 +26,7 @@ export class OpenAiClient implements AiClient {
     #openai: OpenAI;
     private model: string;
     private instructions: string;
-    private additionalInstructions: (args: object) => string;
+    private additionalInstructions: (args: object) => Promise<string>;
     private tools: ChatCompletionTool[];
     private functions: Record<string, (arg1: object, arg2: object) => Promise<string>>;
     constructor({
@@ -34,7 +34,7 @@ export class OpenAiClient implements AiClient {
         apiKey,
         model,
         instructions,
-        additionalInstructions = () => "",
+        additionalInstructions = async () => "",
         tools = [],
         functions = {},
     }: AiClientOptions) {
@@ -101,7 +101,7 @@ export class OpenAiClient implements AiClient {
             content: this.instructions
         });
         const replies = async () => {
-            const addInst = this.additionalInstructions(additionalInstructionsArgs);
+            const addInst = await this.additionalInstructions(additionalInstructionsArgs);
             if (addInst.length > 0) {
                 let insertIndex = 0;
                 for (let i = conversation.length - 1; i >= 0; i--) {
