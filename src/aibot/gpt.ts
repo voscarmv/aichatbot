@@ -1,147 +1,147 @@
 import OpenAI from "openai";
 import type {
-    ChatCompletionMessageFunctionToolCall,
-    ChatCompletionMessageParam,
-    ChatCompletionTool,
-    ChatCompletionMessage,
-    ChatCompletionMessageToolCall
+  ChatCompletionMessageFunctionToolCall,
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+  ChatCompletionMessage,
+  ChatCompletionMessageToolCall
 } from "openai/resources";
 export interface AiClient {
-    runAI(
-        messages: ChatCompletionMessageParam[],
-        additionalToolsArgs?: object,
-        additionalInstructionsArgs?: object):
-        Promise<ChatCompletionMessageParam[]>;
+  runAI(
+    messages: ChatCompletionMessageParam[],
+    additionalToolsArgs?: object,
+    additionalInstructionsArgs?: object):
+    Promise<ChatCompletionMessageParam[]>;
 }
 export type AiClientOptions = {
-    baseURL: string;
-    apiKey: string;
-    model: string;
-    instructions: string;
-    additionalInstructions?: (args: object) => Promise<string>;
-    tools?: ChatCompletionTool[];
-    functions?: Record<string, (arg1: object, arg2: object) => Promise<string>>;
+  baseURL: string;
+  apiKey: string;
+  model: string;
+  instructions: string;
+  additionalInstructions?: (args: object) => Promise<string>;
+  tools?: ChatCompletionTool[];
+  functions?: Record<string, (arg1: object, arg2: object) => Promise<string>>;
 };
 export class OpenAiClient implements AiClient {
-    #openai: OpenAI;
-    private model: string;
-    private instructions: string;
-    private additionalInstructions: (args: object) => Promise<string>;
-    private tools: ChatCompletionTool[];
-    private functions: Record<string, (arg1: object, arg2: object) => Promise<string>>;
-    constructor({
-        baseURL,
-        apiKey,
-        model,
-        instructions,
-        additionalInstructions = async () => "",
-        tools = [],
-        functions = {},
-    }: AiClientOptions) {
-        this.#openai = new OpenAI({ baseURL, apiKey });
-        this.model = model;
-        this.instructions = instructions;
-        this.additionalInstructions = additionalInstructions;
-        this.tools = tools;
-        this.functions = functions;
+  #openai: OpenAI;
+  private model: string;
+  private instructions: string;
+  private additionalInstructions: (args: object) => Promise<string>;
+  private tools: ChatCompletionTool[];
+  private functions: Record<string, (arg1: object, arg2: object) => Promise<string>>;
+  constructor({
+    baseURL,
+    apiKey,
+    model,
+    instructions,
+    additionalInstructions = async () => "",
+    tools = [],
+    functions = {},
+  }: AiClientOptions) {
+    this.#openai = new OpenAI({ baseURL, apiKey });
+    this.model = model;
+    this.instructions = instructions;
+    this.additionalInstructions = additionalInstructions;
+    this.tools = tools;
+    this.functions = functions;
+  }
+  async #callTool(
+    tool_call: ChatCompletionMessageFunctionToolCall,
+    additionalArgs: object):
+    Promise<{
+      tool_call_id: string,
+      content: string
+    }> {
+    const tool_call_id = tool_call?.id;
+    const functionName = tool_call?.function.name;
+    const functionArgs = JSON.parse(tool_call?.function.arguments || '{}');
+    if (!functionName || !this.functions[functionName]) {
+      throw new Error(`Unknown tool function: ${functionName}`);
     }
-    async #callTool(
-        tool_call: ChatCompletionMessageFunctionToolCall,
-        additionalArgs: object):
-        Promise<{
-            tool_call_id: string,
-            content: string
-        }> {
-        const tool_call_id = tool_call?.id;
-        const functionName = tool_call?.function.name;
-        const functionArgs = JSON.parse(tool_call?.function.arguments || '{}');
-        if (!functionName || !this.functions[functionName]) {
-            throw new Error(`Unknown tool function: ${functionName}`);
-        }
-        const fn = this.functions[functionName];
-        const content = await fn(functionArgs, additionalArgs);
-        return {
-            tool_call_id,
-            content
-        }
+    const fn = this.functions[functionName] as any;
+    const content = await fn(functionArgs, additionalArgs);
+    return {
+      tool_call_id,
+      content
     }
-    async #gpt(
-        messages: ChatCompletionMessageParam[],
-        tools: ChatCompletionTool[]):
-        Promise<{
-            message: ChatCompletionMessage | undefined,
-            tool_calls: ChatCompletionMessageToolCall[] | undefined
-        }> {
-        const completion = await this.#openai.chat.completions.create({
-            messages,
-            tools,
-            model: this.model,
+  }
+  async #gpt(
+    messages: ChatCompletionMessageParam[],
+    tools: ChatCompletionTool[]):
+    Promise<{
+      message: ChatCompletionMessage | undefined,
+      tool_calls: ChatCompletionMessageToolCall[] | undefined
+    }> {
+    const completion = await this.#openai.chat.completions.create({
+      messages,
+      tools,
+      model: this.model,
+    });
+    const message = completion?.choices?.[0]?.message;
+    if (!message) {
+      throw new Error("OpenAI returned no message");
+    }
+    const tool_calls = message?.tool_calls;
+    return {
+      message,
+      tool_calls
+    };
+  }
+  async runAI(
+    messages: ChatCompletionMessageParam[],
+    additionalToolslArgs: object = {},
+    additionalInstructionsArgs: object = {}):
+    Promise<
+      ChatCompletionMessageParam[]
+    > {
+    const output: ChatCompletionMessageParam[] = [];
+    const conversation: ChatCompletionMessageParam[] = [...messages];
+    conversation.unshift({
+      role: 'system',
+      content: this.instructions
+    });
+    const replies = async () => {
+      const addInst = await this.additionalInstructions(additionalInstructionsArgs);
+      if (addInst.length > 0) {
+        let insertIndex = 0;
+        for (let i = conversation.length - 1; i >= 0; i--) {
+          if (conversation[i]?.role !== 'tool') {
+            insertIndex = i;
+            break;
+          }
+        }
+        conversation.splice(insertIndex, 0, {
+          role: 'system',
+          content: addInst
         });
-        const message = completion?.choices?.[0]?.message;
-        if (!message) {
-            throw new Error("OpenAI returned no message");
+      }
+      const reply = await this.#gpt(conversation, this.tools);
+      if (!reply.message) {
+        throw new Error("OpenAI returned no message");
+      }
+      output.push(reply.message);
+      conversation.push(reply.message);
+      if (reply.tool_calls) {
+        for (const toolCall of reply.tool_calls) {
+          if (toolCall.type !== 'function') {
+            continue;
+          }
+          const result = await this.#callTool(toolCall, additionalToolslArgs)
+          output.push({
+            role: 'tool',
+            tool_call_id: result.tool_call_id,
+            content: result.content || ''
+          });
+          conversation.push({
+            role: 'tool',
+            tool_call_id: result.tool_call_id,
+            content: result.content || ''
+          });
         }
-        const tool_calls = message?.tool_calls;
-        return {
-            message,
-            tool_calls
-        };
-    }
-    async runAI(
-        messages: ChatCompletionMessageParam[],
-        additionalToolslArgs: object = {},
-        additionalInstructionsArgs: object = {}):
-        Promise<
-            ChatCompletionMessageParam[]
-        > {
-        const output: ChatCompletionMessageParam[] = [];
-        const conversation: ChatCompletionMessageParam[] = [...messages];
-        conversation.unshift({
-            role: 'system',
-            content: this.instructions
-        });
-        const replies = async () => {
-            const addInst = await this.additionalInstructions(additionalInstructionsArgs);
-            if (addInst.length > 0) {
-                let insertIndex = 0;
-                for (let i = conversation.length - 1; i >= 0; i--) {
-                    if (conversation[i]?.role !== 'tool') {
-                        insertIndex = i;
-                        break;
-                    }
-                }
-                conversation.splice(insertIndex, 0, {
-                    role: 'system',
-                    content: addInst
-                });
-            }
-            const reply = await this.#gpt(conversation, this.tools);
-            if (!reply.message) {
-                throw new Error("OpenAI returned no message");
-            }
-            output.push(reply.message);
-            conversation.push(reply.message);
-            if (reply.tool_calls) {
-                for (const toolCall of reply.tool_calls) {
-                    if (toolCall.type !== 'function') {
-                        continue;
-                    }
-                    const result = await this.#callTool(toolCall, additionalToolslArgs)
-                    output.push({
-                        role: 'tool',
-                        tool_call_id: result.tool_call_id,
-                        content: result.content || ''
-                    });
-                    conversation.push({
-                        role: 'tool',
-                        tool_call_id: result.tool_call_id,
-                        content: result.content || ''
-                    });
-                }
-                await replies();
-            }
-        };
         await replies();
-        return output;
-    }
+      }
+    };
+    await replies();
+    return output;
+  }
 }

@@ -1,70 +1,70 @@
 import { type AiClient } from "./gpt.js";
 import { type MessageStore } from "./store.js";
 import type {
-    ChatCompletionMessageParam,
+  ChatCompletionMessageParam,
 } from "openai/resources";
 
 export type processMessagesParams = {
-    user_id: string,
-    content: string,
-    replyFn?: any,
-    additionalToolsArgs?: object,
-    additionalInstructionsArgs?: object
+  user_id: string,
+  content: string,
+  replyFn?: any,
+  additionalToolsArgs?: object,
+  additionalInstructionsArgs?: object
 }
 
 export interface Chat {
-    processMessages(params: processMessagesParams):
-        Promise<
-            string[]
-        >
+  processMessages(params: processMessagesParams):
+    Promise<
+      string[]
+    >
 }
 
 export type ChatParams = {
-    aiClient: AiClient, messageStore: MessageStore
+  aiClient: AiClient, messageStore: MessageStore
 }
 
 export class ChatService {
-    #aiClient: AiClient;
-    #messageStore: MessageStore;
-    #busy = new Set<string>();
+  #aiClient: AiClient;
+  #messageStore: MessageStore;
+  #busy = new Set<string>();
 
-    constructor(params: ChatParams) {
-        this.#aiClient = params.aiClient;
-        this.#messageStore = params.messageStore;
+  constructor(params: ChatParams) {
+    this.#aiClient = params.aiClient;
+    this.#messageStore = params.messageStore;
+  }
+  #reply(messages: ChatCompletionMessageParam[], replyFn: any) {
+    messages.map(
+      async (msg: ChatCompletionMessageParam) => {
+        if (typeof (msg.content) === "string")
+          if (msg.role === "assistant" && msg.content.length > 0)
+            await replyFn(msg.content);
+      }
+    );
+  }
+  async processMessages(params: processMessagesParams): Promise<string[]> {
+    const {
+      user_id,
+      content,
+      replyFn,
+      additionalToolsArgs,
+      additionalInstructionsArgs } = params;
+    await this.#messageStore.insertMessages(user_id, true, [{ role: 'user', content }]);
+    if (this.#busy.has(user_id)) {
+      return [];
     }
-    #reply(messages: ChatCompletionMessageParam[], replyFn: any) {
-        messages.map(
-            (msg: ChatCompletionMessageParam) => {
-                if (typeof (msg.content) === "string")
-                    if (msg.role === "assistant" && msg.content.length > 0)
-                        replyFn(msg.content);
-            }
-        );
+    this.#busy.add(user_id);
+    let output: ChatCompletionMessageParam[] = [];
+    let queued = await this.#messageStore.queuedMessages(user_id);
+    while (queued.length > 0) {
+      await this.#messageStore.unqueueUserMessages(user_id);
+      const msgs = await this.#messageStore.readUserMessages(user_id);
+      const reply = await this.#aiClient.runAI(msgs, additionalToolsArgs, additionalInstructionsArgs);
+      await this.#messageStore.insertMessages(user_id, false, reply);
+      output = output.concat(reply);
+      queued = await this.#messageStore.queuedMessages(user_id);
     }
-    async processMessages(params: processMessagesParams): Promise<string[]> {
-        const {
-            user_id,
-            content,
-            replyFn,
-            additionalToolsArgs,
-            additionalInstructionsArgs } = params;
-        await this.#messageStore.insertMessages(user_id, true, [{ role: 'user', content }]);
-        if (this.#busy.has(user_id)) {
-            return [];
-        }
-        this.#busy.add(user_id);
-        let output: ChatCompletionMessageParam[] = [];
-        let queued = await this.#messageStore.queuedMessages(user_id);
-        while (queued.length > 0) {
-            await this.#messageStore.unqueueUserMessages(user_id);
-            const msgs = await this.#messageStore.readUserMessages(user_id);
-            const reply = await this.#aiClient.runAI(msgs, additionalToolsArgs, additionalInstructionsArgs);
-            await this.#messageStore.insertMessages(user_id, false, reply);
-            output = output.concat(reply);
-            queued = await this.#messageStore.queuedMessages(user_id);
-        }
-        this.#busy.delete(user_id);
-        this.#reply(output, replyFn);
-        return output.map((message) => JSON.stringify(message));
-    }
+    this.#busy.delete(user_id);
+    this.#reply(output, replyFn);
+    return output.map((message) => JSON.stringify(message));
+  }
 }

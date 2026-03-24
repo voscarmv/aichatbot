@@ -69,7 +69,7 @@ export class FunctionMessageStore implements MessageStore {
     this.queuedMessages = async (userId: string) => {
       const output = await fns.queuedMessages(userId);
       return output.map((message) => JSON.parse(message));
-    } 
+    }
   }
 }
 
