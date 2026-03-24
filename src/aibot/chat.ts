@@ -33,15 +33,11 @@ export class ChatService {
     this.#messageStore = params.messageStore;
   }
   async #reply(messages: ChatCompletionMessageParam[], replyFn: any) {
-    await Promise.all(
-      messages.map(
-        async (msg: ChatCompletionMessageParam) => {
-          if (typeof (msg.content) === "string")
-            if (msg.role === "assistant" && msg.content.length > 0)
-              await replyFn(msg.content);
-        }
-      )
-    );
+    for (const msg of messages) {
+      if (typeof msg.content === "string")
+        if (msg.role === "assistant" && msg.content.length > 0)
+          await replyFn(msg.content);
+    }
   }
   async processMessages(params: processMessagesParams): Promise<string[]> {
     const {
