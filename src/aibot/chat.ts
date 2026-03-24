@@ -32,13 +32,15 @@ export class ChatService {
     this.#aiClient = params.aiClient;
     this.#messageStore = params.messageStore;
   }
-  #reply(messages: ChatCompletionMessageParam[], replyFn: any) {
-    messages.map(
-      async (msg: ChatCompletionMessageParam) => {
-        if (typeof (msg.content) === "string")
-          if (msg.role === "assistant" && msg.content.length > 0)
-            await replyFn(msg.content);
-      }
+  async #reply(messages: ChatCompletionMessageParam[], replyFn: any) {
+    await Promise.all(
+      messages.map(
+        async (msg: ChatCompletionMessageParam) => {
+          if (typeof (msg.content) === "string")
+            if (msg.role === "assistant" && msg.content.length > 0)
+              await replyFn(msg.content);
+        }
+      )
     );
   }
   async processMessages(params: processMessagesParams): Promise<string[]> {
@@ -64,7 +66,7 @@ export class ChatService {
       queued = await this.#messageStore.queuedMessages(user_id);
     }
     this.#busy.delete(user_id);
-    this.#reply(output, replyFn);
+    await this.#reply(output, replyFn);
     return output.map((message) => JSON.stringify(message));
   }
 }
